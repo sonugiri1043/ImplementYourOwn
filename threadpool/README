@@ -1,0 +1,49 @@
+Thread pool:
+
+A threadpool is at core a set of threads all bound to a function working as an event loop.
+These threads will endlessly wait for a task to be executed, or their own termination. The
+threadpool job is to provide an interface to submit jobs, define the policy of running these
+jobs( scheduling rules, size of pool, thread initialization ) and monitor the status of the
+threads and related resources.
+
+Steps:
+1. Start with maximum number of threads a system can support:
+   int num_threads = thread::hardware_concurrency();
+
+2. Each C++11 thread should be running in their function with infinite loop, constantly
+   waiting for new tasks to grab and run.
+
+   vector< thread > Pool;
+   for( int i=0; i < num_threads; i++ ) {
+      Pool.push_back( thread( Infinite_loop_function ) );
+   }
+
+3. The Infinite_loop_function
+   This a a 'while( true )' loop waiting for task queue
+
+   void Infinite_loop_function()
+   {
+      while( true )
+      {      
+      	 {
+	    unique_lock< mutex > lock( Queue_mutex );
+	    condition.wait( lock, [] { return !Queue.empty() };
+	    Job = Queue.front();
+	    Queue.pop();
+	 }
+         Job();
+      }
+   }
+
+4. Make a function to add job to Queue.
+   void Add_Job( function<void()> New_Job )
+   {
+     {
+        unique_lock< mutex > lock( Queue_mutex );
+        Queue.push( New_Job );
+     }
+     condition.notify_one();
+   }
+
+5. Bind an arbitrary function to your Queue
+   Pool_Obj.Add_job( std::bind( &Some_Class::SomeMethod, &Some_Object ) );
