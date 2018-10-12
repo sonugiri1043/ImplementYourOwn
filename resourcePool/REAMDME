@@ -1,0 +1,21 @@
+Object Pool Design Pattern
+
+Object pools ( aka resource pools ) are used to manage the object caching. This can offer
+a significant performance boost. It is most effective in situations where the cost of 
+init of a object instance is high, the rate of init of object is high and the no of 
+instance in use at any one time is low.
+
+Components:
+Client: Used an object from pool.
+ReusablePool: The pool of objects.
+Object Pool: Maintains a list of available objects and collections of objects that have already
+             been requested.
+
+The client with access to a object pool avoid creating a new object by simply asking the pool
+for one that has already been instantiated. Generally the pool will be growing pool, i.e. the
+pool itself will create new objects if the pool is empty, or we can have a pool, which restricts
+the number of objects created.
+
+Example:
+- Database connections.
+- Server listening to request keeps a pool of threads.
