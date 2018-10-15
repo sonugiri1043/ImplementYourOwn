@@ -47,3 +47,5 @@ Steps:
 
 5. Bind an arbitrary function to your Queue
    Pool_Obj.Add_job( std::bind( &Some_Class::SomeMethod, &Some_Object ) );
+   or
+   Pool_Obj.Add_job( some_function );
