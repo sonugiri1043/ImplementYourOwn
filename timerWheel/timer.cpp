@@ -103,7 +103,7 @@ void TimerWheel::startClock() {
   while( true ) {
     this->currentTime = ( this->currentTime + this->granularity ) %	\
       this->maxTimeInterval;
-    sleep( this->granularity );
+    sleep( this->granularity ); // Enhancement: instead of sleep wait on a condition
     perTickBookkeeping();
   }
 }
@@ -192,15 +192,14 @@ int main() {
    tw->startTimer( 45, 4, callBackFn );
 
    tw->startClock();
-
-   tw->stopTimer( 4 );
-
    return 0;
 }
 
 /*
   Suggestions:
-  Doubly link list can be used to enhance performance of stop-timer.
-  Extend this to hashed timer wheel and hierarchial timer wheel as
-  described in README.
+  1. Run timerwheel in a seperate thread.
+  2. Don't use sleep instead wait on a condition.
+  3. Doubly link list can be used to enhance performance of stop-timer.
+  4. Extend this to hashed timer wheel and hierarchial timer wheel as
+     described in README.
 */
