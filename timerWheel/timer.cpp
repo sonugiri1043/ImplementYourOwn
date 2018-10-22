@@ -197,3 +197,10 @@ int main() {
 
    return 0;
 }
+
+/*
+  Suggestions:
+  Doubly link list can be used to enhance performance of stop-timer.
+  Extend this to hashed timer wheel and hierarchial timer wheel as
+  described in README.
+*/
