@@ -1,0 +1,88 @@
+Hashed and Hierarchical Timing Wheels: Data Structures for Efficient Implementation for a Timer Facility
+
+http://www.cs.columbia.edu/~nahum/w6998/papers/sosp87-timing-wheels.pdf
+
+Efficiently keeping track of expiry timers is a common problem. The principle can apply to any system keeping track of outstanding requests or message with an expiry time.
+
+Model and Performance Measures
+The Model is composed of two user facing operations, START_TIMER and STOP_TIMER, and two internal operations: PER_TICK_BOOKKEEPING and EXPIRY_PROCESSING.
+
+START_TIMER( Interval, Request_ID, Expiry_Action ): Start a timer that will expire after “Interval” units of time. Request_ID is used to distinguish this timer from other timers that client has outstanding. Client specify what action must be taken on expiry (e.g: calling a client specific routine, or setting an event flag).
+
+STOP_TIMER( Request_ID ): This routing used its knowledge of the client and Request_ID to locate the timer and stop it.
+
+PER_TICK_BOOKKEEPING: Let the granularity of the timer be T units. Then every T units this routine checks whether any outstanding timers have expired; if so, it calls STOP_TIMER, which in turn invokes expiry processing.
+
+EXPIRY_PROCESSING: Does the Expiry_Action specified in the START_TIMER call.
+
+Timer Schemes
+
+Scheme 1 - Unordered Timer List
+START_TIMER finds a memory location and sets that location to the specific timer interval. Every T units, PER_TICK_BOOKKEEPING will decrement each outstanding timers; if any timers becomes zero, EXPIRY_PROCESSING is called. This scheme is extremely fast for all but PER_TICK_BOOKKEEPING. Uses one space per outstanding timer.
+Instead of doing DECREMENT, we can store the absolute time at which timers expire and do a COMPARE.
+
+Scheme 2 - ORDERED LIST/ TIMER QUEUES
+Timers are stored in ordered list. We store the absolute time at which timer expires and not the interval before expiry. Timers due for expire at the earliest time is stored at the head of the list. If they are equal, or the time of the day is greater, it deleted that list element and calls EXPIRY_PROCESSING. START_TIMER searches the list to find the position to insert the new timer. Worst case latency to start a timer is O(n).
+STOP_TIMER need not search the list if the list is doubly list. When START_TIMER inserts a timer into the ordered list it can store a pointer to the element. STOP_TIMER can then use this pointer to delete the element in O(1) time from the doubly linked list.
+
+Scheme 3: Tree-based Algorithms
+A linked-list is one way of implementing a priority queue. For large n, tree-bases data structures are better. These include unbalanced binary trees, heaps, etc… They attempt to reduce the latency in Scheme 2 for START_TIMEr from O(n) to O(log(n)). 
+
+Discrete Event Simulation 
+In discrete event simulations, all state changes in the system take place at discrete points in time. When an event occurs in a simulations, it may schedule future events. There events are inserted into some list of outstanding events. The simulations proceeds by processing the earliest event, which in turn may schedule further events. The simulations continues until the event list is empty or some condition ( e.g. clock > MAX-SIMULATION-TIME ) holds.  
+
+Ways to find earliest event and update the clock:
+The earliest event is immediately retrieved from some data structure( e.g. priority queue ) and the clock jumps to the time of this event.
+In digital circuits, if is often sufficient to consider event scheduling at time instants that are multiples of clock interval, say c. Then, after program processes an event, it increments the clock variable by c until it finds any outstanding events at the current time. It then executes the event(s).
+An efficient and widely used method to implement the second method is the so-called timing wheel technique. In this method, the data structure into which timers are inserted is an array of lists, with a single overflow list of timers beyond the range of the array.
+
+Time is divided into cycles; each cycle is N units of time. Let the current no of cycles be S. If the current time pointer to element s, the current time is S*N + j. Within a cycle, the simulation increment the current time until it finds a non-empty list; it then removes and processes all events in the list. If these schedule future events within the current cycle, such events are inserted into the array of lists; if not, the new events are inserted into the overflow list.
+
+The current time pointer is incremented modulo N. When it wraps to 0, the number of cycles is incremented, and the overflow list is checked; any elements due to occur in the current cycle are removed from the overflow list and inserted into the array lists.
+
+The array can be conceptually thought as a timing wheel; every time we step through N locations, we rotate the wheel by incrementing the number of cycles. A problem with this implementation is that as time increases within a cycle and we travel down the array it becomes more likely that event records will be inserted in the overflow list.
+
+In Digital Simulations, most events happen within a short interval beyond the current time. Since timing wheel implementation rarely place event notices in the overflow list, they do not optimise this case. This is not true for general purpose timer facility. 
+Most simulations ensure that if 2 events are scheduled to occur at same time, they are removed FIFO order. Timer modules need not meet this restriction.
+Simulation language assume that canceling event notices are very rare. If this is so, it is sufficient to mark the notices as “Canceled” and wait until the event is scheduled; at that point the scheduler discards the event. In a timer module, STOP_TIMER may be called frequently; such an approach can cause the memory needs to grow unboundedly beyond the number of timers outstanding at any time.
+
+Scheme 4 - Basic Scheme for Timer Intervals within a Specified Range
+
+A basic timing wheel approach is applicable when all timers have a maximum period of no more than MaxInterval.  The modified algorithm takes O(1) latency for START_TIMER, STOP_TIMER, and PER_TICK_BOOKKEEPING.
+
+The the granularity be 1 unit. The current time is represented by a pointer to an element in a circular buffer with dimensions [0, MaxInterval - 1 ].
+To set a timer at j units past current time, we index into element ( i + j mod MaxInterval), and put the timer at the head of a list of timers that will expire at a time = CurrentTime + j units. Each tick increment the current timer pointer ( mod maxInterval ) and check the array element being pointer to. If the element is 0 ( no list of timers waiting to expire ), not more work is done on that timer tick. But if it is non-zero, we do EXPIRE_PROCESSING on all timers that are stored in that list. Thus the latency for START_TIMER is O(1); PER_TICK_BOOKKEEPING is O(1). 
+If the timer lists are doubly linked, we store a pointer to each timer record, then the latency of STOP_TIMER is also O(1).
+
+In sorting terms, this is bucket sort that trades off memory for processing. A bucket sort sorts N element in O(M) time using M buckets, since all buckets have to be examined. This is inefficient for large M > N.
+
+This scheme can be extended in two ways to allow larger values of the timer interval with modest amounts of memory.
+
+
+Scheme 5: Hash Table with Sorted List in each Bucket
+If MaxInterval is comparatively large( e.g. 32 bit timer ), simple thing wheels can use a lot of memory. Instead of using one slot per time unit, we could use a form of hashing instead. For example, if the table size is a power of 2, an arbitrary size timer can easily be divided by the table size; the remainder (low order bits) is added to the current time pointer to yield the index within the array. The result of the division (high order bits) is stored in a list pointed to by the index.
+
+START_TIMER can be slow. worst case latency is still O(n), the average latency can be O(1). This is true if n < TableSize, and hash function distributes timer values uniformly across the table. PER_TICK_BOOKKEEPING increments the current time pointer. If the value stored in the array element being pointed to is zero, there is no more work. Otherwise, the top of the list is decremented. If it expires, EXPIRY_PROCESSING is called and top list element is deleted. Average latency is O(1). Finally, if each list is DLL and START_TIMER stores a pointer to each timer element, STOP_TIMER takes O(1) time. This is similar to bucket sort on low order bits, followed by insertion sort on the lists pointed by each bucket.
+
+Scheme 6: Hash Table with Unordered List in each Bucket
+If worst case latency of O(n) is unacceptable, we can maintain each time list as an unordered list. Thus START_TIMER has a worst and average latency of O(1). But PER_TICK_BOOKKEEPING now takes longer.
+
+Scheme 7: Exploiting Hierarchy
+The last extension of the basic scheme exploits the concept of hierarchy. We can use a number of arrays, each of different granularity. For example:
+A 100 element array in which each array represent a day.
+A 24 element array in which each element represent an hour.
+A 60 element array in which each element represent a minute.
+A 60 element array in which each element represent a second.
+
+Thus instead of 100*24(60*60 = 8.64 million locations to store timers up to 100 days, we need only 100 + 24 + 60 + 60  = 244 locations.
+
+As an example, Let the current time be 11 days 10 hours, 24 minutes, 30 seconds. Then to set a timer of 50 minutes and 45 seconds, we first calculate the absolute time at which the timer will expire. This is 11 days, 11 hours, 15 minutes, 15 seconds. Then we insert the timer into a list beginning 1 (11 - 10 hours) element ahead of the current hour pointer in the hour array. We also store the remainder (15 minutes and 15 seconds) in this location. We show this in Figure 10, ignoring the day array which does not change during the example.
+
+The seconds array works as usual: every time the hardware clock ticks we increment the second pointer. If the list pointed to by the element is non-empty, we do EXPIRY_PROCESSING for elements in that list. However, the other 3 arrays work slightly differently. Even if there are no timers requested by the user of the service, there will always be a 60 second timer that is used to update the minute array, a 60 minute timer to update the hour array, and a 24 hour timer to update the day array. For instance, every time the 60 second timer expires, we will increment the current minute timer, do any required EXPIRY_PROCESSING for the minute timers, and re-insert another 60 second timer.
+
+Performance parameters:
+START_TIMER: Depending on the algorithm, we may need O(m) time, where m is the number of arrays in the hierarchy, to find the right table to insert the timer and to find the remaining time. ( 2 <= m <= 5 ).
+STOP_TIMER: This can be done in O(1) time if all lists are doubly linked.
+PER_TICK_BOOKKEEPING:  O(1) average latency 
+
+This scheme has analogy to radix sort.
